@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>India Exports | EDA Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>India Exports <span class="accent">Explorer</span></h1>
+        <p class="intro">
+          An exploratory look at India's export data: how total value has changed
+          over time, which countries lead, and which commodities drive the most value.
+        </p>
+      </div>
+      <div class="filter">
+        <label for="year-select">Year</label>
+        <select id="year-select"></select>
+      </div>
+    </header>
+
+    <section class="kpis">
+      <div class="card kpi"><span class="kpi-label" id="kpi-total-label">Total value</span><span class="kpi-value" id="kpi-total">–</span></div>
+      <div class="card kpi"><span class="kpi-label">Countries</span><span class="kpi-value" id="kpi-countries">–</span></div>
+      <div class="card kpi"><span class="kpi-label">Commodities</span><span class="kpi-value" id="kpi-commodities">–</span></div>
+    </section>
+
+    <section class="card chart-card wide">
+      <h2>Total export value over time</h2>
+      <div class="chart-box tall"><canvas id="trendChart"></canvas></div>
+    </section>
+
+    <section class="grid">
+      <div class="card chart-card">
+        <h2>Top 10 countries <span class="muted" id="countries-year"></span></h2>
+        <div class="chart-box"><canvas id="countriesChart"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <h2>Top 5 commodities <span class="muted" id="commodities-year"></span></h2>
+        <div class="chart-box"><canvas id="commoditiesChart"></canvas></div>
+      </div>
+    </section>
+
+    <p class="note" id="note">The line chart shows all years; the other charts follow the selected year.</p>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
