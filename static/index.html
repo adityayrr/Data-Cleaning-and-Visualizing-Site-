@@ -2,51 +2,347 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>India Exports | EDA Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto-EDA | Automated Exploratory Data Analysis</title>
+  <meta name="description" content="Automated Exploratory Data Analysis engine with zero manual axis selection." />
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Plotly.js CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <!-- Stylesheet -->
   <link rel="stylesheet" href="/static/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <main class="container">
-    <header class="header">
-      <div>
-        <h1>India Exports <span class="accent">Explorer</span></h1>
-        <p class="intro">
-          An exploratory look at India's export data: how total value has changed
-          over time, which countries lead, and which commodities drive the most value.
-        </p>
+  <!-- Hidden File Input for CSV Upload -->
+  <input type="file" id="fileInput" accept=".csv" style="display: none;" />
+
+  <div class="app-container">
+    <!-- ================================================================= -->
+    <!-- TOP CONTROL BAR (Minimalist, Zero Gimmicks) -->
+    <!-- ================================================================= -->
+    <header class="top-bar">
+      <div class="brand-group">
+        <h1 class="brand-title">Auto-EDA</h1>
       </div>
-      <div class="filter">
-        <label for="year-select">Year</label>
-        <select id="year-select"></select>
+
+      <!-- Controls Right: Upload, Clean Toggle, Range Filter -->
+      <div class="top-controls">
+        <button id="btnLoadSample" class="btn btn-secondary" title="Load bundled 184k-row India Exports dataset">
+          Load Sample
+        </button>
+
+        <button id="btnUpload" class="btn btn-primary" title="Upload any CSV file">
+          Upload CSV
+        </button>
+
+        <!-- Auto-Clean Toggle Switch -->
+        <div class="control-box clean-control" title="Toggle automated deduplication and missing value imputation">
+          <div class="clean-label-group">
+            <span class="control-title">Auto-Clean</span>
+            <span class="clean-status-pill" id="cleanStatusPill">Raw</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="cleanToggle" />
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <!-- Range Filter Control -->
+        <div class="control-box range-control" id="rangeControlBox" style="display: none;">
+          <div class="range-header">
+            <span class="control-title" id="rangeLabel">Range Filter</span>
+            <span class="range-value-pill" id="rangeValDisplay">—</span>
+          </div>
+          <div class="range-slider-wrapper">
+            <input type="range" id="rangeSliderMin" class="range-slider" />
+            <input type="range" id="rangeSliderMax" class="range-slider" />
+          </div>
+        </div>
       </div>
     </header>
 
-    <section class="kpis">
-      <div class="card kpi"><span class="kpi-label" id="kpi-total-label">Total value</span><span class="kpi-value" id="kpi-total">–</span></div>
-      <div class="card kpi"><span class="kpi-label">Countries</span><span class="kpi-value" id="kpi-countries">–</span></div>
-      <div class="card kpi"><span class="kpi-label">Commodities</span><span class="kpi-value" id="kpi-commodities">–</span></div>
-    </section>
+    <!-- ================================================================= -->
+    <!-- VISUALIZATION MODULE PICKER (Flat Crisp Chips, No Glowing Dots) -->
+    <!-- ================================================================= -->
+    <nav class="module-bar" id="moduleBar" style="display: none;">
+      <div class="module-bar-inner">
+        <div class="module-bar-left">
+          <span class="module-bar-label">Modules:</span>
+          <div class="chip-group" id="chipGroup">
+            <button class="chip active" data-module="kpis">KPI Monitors</button>
+            <button class="chip active" data-module="insights">Executive Insights</button>
+            <button class="chip active" data-module="stats_summary">Statistical Summary</button>
+            <button class="chip active" data-module="trend">Time Trend</button>
+            <button class="chip active" data-module="top_categories">Top Categories</button>
+            <button class="chip active" data-module="composition">Sector Composition</button>
+            <button class="chip active" data-module="distribution">Distribution & Outliers</button>
+            <button class="chip active" data-module="correlation" id="chipCorrelation">Correlation Matrix</button>
+            <button class="chip active" data-module="data_quality">Data Quality & Bias</button>
+          </div>
+        </div>
 
-    <section class="card chart-card wide">
-      <h2>Total export value over time</h2>
-      <div class="chart-box tall"><canvas id="trendChart"></canvas></div>
-    </section>
-
-    <section class="grid">
-      <div class="card chart-card">
-        <h2>Top 10 countries <span class="muted" id="countries-year"></span></h2>
-        <div class="chart-box"><canvas id="countriesChart"></canvas></div>
+        <!-- Schema Profiling Summary -->
+        <div class="profile-summary-pill" id="profileSummaryPill">
+          <span id="profileSummaryText">Profiling schema...</span>
+        </div>
       </div>
-      <div class="card chart-card">
-        <h2>Top 5 commodities <span class="muted" id="commodities-year"></span></h2>
-        <div class="chart-box"><canvas id="commoditiesChart"></canvas></div>
-      </div>
-    </section>
+    </nav>
 
-    <p class="note" id="note">The line chart shows all years; the other charts follow the selected year.</p>
-  </main>
+    <!-- ================================================================= -->
+    <!-- MAIN WORKSPACE -->
+    <!-- ================================================================= -->
+    <main class="main-content">
+      <!-- 1. EMPTY STATE (BEFORE CSV UPLOAD - Zero Gimmicks / No Emojis) -->
+      <section class="empty-state" id="emptyState">
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-content">
+            <h2 class="dropzone-title">Upload CSV</h2>
+            <p class="dropzone-desc">Drag and drop any CSV file here, or select from your computer to run automated exploratory data analysis. The engine automatically classifies dimensions, metrics, timestamps, and outliers.</p>
+
+            <div class="dropzone-actions">
+              <button class="btn btn-primary btn-large" id="btnEmptyUpload">Select CSV File</button>
+              <button class="btn btn-secondary btn-large" id="btnEmptySample">Load Sample Dataset</button>
+            </div>
+
+            <!-- Clean Minimal Feature Grid (No Emojis) -->
+            <div class="dropzone-features">
+              <div class="feature-item">
+                <strong>Schema Profiling</strong>
+                <p>Identifies calendar years, timestamps, and ID codes automatically.</p>
+              </div>
+              <div class="feature-item">
+                <strong>Zero-Axis Selection</strong>
+                <p>Ranks numeric variance and useful category cardinality.</p>
+              </div>
+              <div class="feature-item">
+                <strong>Pareto & Bias Audit</strong>
+                <p>Calculates top-group concentration and distribution skewness.</p>
+              </div>
+              <div class="feature-item">
+                <strong>Automated Cleaning</strong>
+                <p>Deduplicates rows and imputes missing numeric/category values.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. DASHBOARD VIEW (WHEN DATASET IS LOADED) -->
+      <section class="dashboard-view" id="dashboardView" style="display: none;">
+        <!-- Clean Notice Banner -->
+        <div class="clean-banner" id="cleanBanner" style="display: none;">
+          <div class="banner-left">
+            <span class="banner-badge">Cleaned</span>
+            <span class="banner-text" id="cleanBannerText">Deduplicated & Imputed</span>
+          </div>
+          <button class="btn-text-close" id="btnCloseCleanBanner">×</button>
+        </div>
+
+        <!-- KPI Strip -->
+        <section class="kpi-strip" id="kpiStrip">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">Total Observations</span>
+              <span class="kpi-reason" id="kpiReason1">Row Count</span>
+            </div>
+            <div class="kpi-value" id="kpiRows">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-subtext" id="kpiRowsSub">Filtered active rows</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label" id="kpiMetricLabel">Primary Metric (Sum)</span>
+              <span class="kpi-reason" id="kpiReason2">Auto Metric</span>
+            </div>
+            <div class="kpi-value accent-green" id="kpiMetricSum">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-subtext" id="kpiMetricMeanSub">Mean: —</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label" id="kpiCategoryLabel">Unique Categories</span>
+              <span class="kpi-reason" id="kpiReason3">Auto Group</span>
+            </div>
+            <div class="kpi-value" id="kpiCatUnique">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-subtext" id="kpiCatNameSub">Distinct groups</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">Completeness</span>
+              <span class="kpi-reason">Data Health</span>
+            </div>
+            <div class="kpi-value" id="kpiCompleteness">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-subtext" id="kpiMissingSub">0 missing cells</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">Duplicate Rows</span>
+              <span class="kpi-reason">Integrity</span>
+            </div>
+            <div class="kpi-value" id="kpiDuplicates">—</div>
+            <div class="kpi-footer">
+              <span class="kpi-subtext" id="kpiDupSub">0 exact duplicates</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Executive Insights Module (Right Below KPI Strip in 2-Column Minimal Grid) -->
+        <section class="section-container" id="cardInsights">
+          <div class="section-header">
+            <div class="section-title-group">
+              <h3 class="section-title">Executive Insights</h3>
+              <span class="card-reason" id="insightsReason">Synthesized Findings</span>
+            </div>
+          </div>
+          <div class="insights-grid" id="insightsGrid">
+            <!-- 4 Clean Dark Cards Rendered Dynamically -->
+          </div>
+        </section>
+
+        <!-- Statistical Summary Module (df.describe() Table) -->
+        <section class="section-container" id="cardStatsSummary">
+          <div class="section-header">
+            <div class="section-title-group">
+              <h3 class="section-title">Statistical Summary</h3>
+              <span class="card-reason" id="statsSummaryReason">Numeric Descriptive Parameters</span>
+            </div>
+          </div>
+          <div class="table-card">
+            <div class="table-responsive">
+              <table class="data-table" id="statsSummaryTable">
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>Count</th>
+                    <th>Mean</th>
+                    <th>Std Dev</th>
+                    <th>Min</th>
+                    <th>Median (50%)</th>
+                    <th>Max</th>
+                    <th>Skewness</th>
+                    <th>Missing %</th>
+                  </tr>
+                </thead>
+                <tbody id="statsSummaryBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dynamic Visualization Grid -->
+        <div class="canvas-grid" id="canvasGrid">
+          <!-- 1. Trend Chart Card (Full width) -->
+          <div class="chart-card card-span-full" id="cardTrend">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title" id="trendTitle">Trajectory Trend</h3>
+                <span class="card-reason" id="trendReason">Time aggregation</span>
+              </div>
+            </div>
+            <div class="plot-container" id="plotTrend"></div>
+          </div>
+
+          <!-- 2. Top Categories Bar Chart (Half width) -->
+          <div class="chart-card" id="cardTopCategories">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title" id="topCatTitle">Top 10 Categories</h3>
+                <span class="card-reason" id="topCatReason">Ranked by aggregate</span>
+              </div>
+            </div>
+            <div class="plot-container" id="plotTopCategories"></div>
+          </div>
+
+          <!-- 3. Composition Doughnut Chart (Half width) -->
+          <div class="chart-card" id="cardComposition">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title" id="compTitle">Sector Composition</h3>
+                <span class="card-reason" id="compReason">Top 5 breakdown + Other</span>
+              </div>
+            </div>
+            <div class="plot-container" id="plotComposition"></div>
+          </div>
+
+          <!-- 4. Distribution & Outliers (Half width) -->
+          <div class="chart-card" id="cardDistribution">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title" id="distTitle">Distribution & Outlier Spread</h3>
+                <span class="card-reason" id="distReason">Histogram & Boxplot</span>
+              </div>
+            </div>
+            <div class="stat-pills-row" id="distStatPills">
+              <span class="stat-pill" id="pillMean">Mean: —</span>
+              <span class="stat-pill" id="pillMedian">Median: —</span>
+              <span class="stat-pill" id="pillStd">Std: —</span>
+              <span class="stat-pill pill-skew" id="pillSkew">Skew: —</span>
+            </div>
+            <div class="plot-container" id="plotDistribution"></div>
+            <p class="skew-explanation" id="skewDescText"></p>
+          </div>
+
+          <!-- 5. Correlation Heatmap (Half width - Hidden if < 2 numeric cols) -->
+          <div class="chart-card" id="cardCorrelation">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Pearson Correlation Matrix</h3>
+                <span class="card-reason" id="corrReason">Pairwise numeric metrics</span>
+              </div>
+            </div>
+            <div class="plot-container" id="plotCorrelation"></div>
+          </div>
+
+          <!-- 6. Data Quality & Bias (Full width - No Emojis or Yellow Boxes) -->
+          <div class="chart-card card-span-full" id="cardDataQuality">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Data Quality Audit & Bias Detection</h3>
+                <span class="card-reason" id="qualityReason">Missingness & Pareto Concentration</span>
+              </div>
+            </div>
+            <div class="quality-split-layout">
+              <div class="quality-plot-wrap">
+                <h4 class="sub-chart-label">Missing Value Percentage by Column</h4>
+                <div class="plot-container plot-quality" id="plotQuality"></div>
+              </div>
+              <div class="quality-bias-alerts" id="biasAlertsContainer">
+                <h4 class="sub-chart-label">Quality & Concentration Audit Findings</h4>
+                <div class="alerts-list" id="alertsList">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Loading Spinner Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+      <div class="spinner-box">
+        <div class="spinner"></div>
+        <p class="spinner-text" id="spinnerText">Computing analysis...</p>
+      </div>
+    </div>
+  </div>
 
   <script src="/static/script.js"></script>
 </body>
