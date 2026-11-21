@@ -1,113 +1,210 @@
-# India Exports Explorer
+# Auto-EDA Engine
 
-A lightweight full-stack dashboard for exploratory data analysis (EDA) of India's export data. A **FastAPI** backend aggregates the data with **Pandas**, and a **vanilla HTML/CSS/JS** frontend renders interactive **Chart.js** charts in a dark, minimalist theme (AMOLED black, Spotify green, warm white) using the Agrave Pro typeface.
+An automated Exploratory Data Analysis (Auto-EDA) web application built with **FastAPI**, **Pandas**, and **NumPy** on the backend, and a modern, minimalist dark-mode frontend powered by **Plotly.js**.
 
-## Features
+Designed around the **Zero Manual Axis Picking** principle: upload any CSV and the heuristic engine automatically profiles the schema, classifies column types, selects optimal dimensions and metrics, detects outliers and Pareto bias, and computes full-fidelity visualizations and executive insights.
 
-- **Total export value trend** across all years (line chart)
-- **Top 10 countries** by total value (horizontal bar chart)
-- **Top 5 commodities** by total value (doughnut chart)
-- **Year filter** that updates the summary cards, bar chart and doughnut chart; the line chart always shows every year, with the selected year highlighted
-- **Summary cards** for total value, number of countries and number of commodities
-- No build step: plain static files served directly by FastAPI
+---
+
+## Key Highlights
+
+- **Zero Manual Configuration**: No tedious X/Y axis dropdown selection. The backend inspects and ranks columns automatically.
+- **Universal CSV Compatibility**: Accepts any tabular CSV dataset (e-commerce, financial, logistics, public health, macro trade).
+- **Bundled Demo Dataset**: One-click instant testing with the 184,755-record India Exports dataset (2010–2021).
+- **Executive Insights Engine**: Programmatically writes 4 human-readable analytical summaries (Trend trajectory & growth, Category Pareto dominance, Mean vs. Median outlier leverage, Data quality & bias check).
+- **Statistical Summary Table**: Deep descriptive statistics across all numeric fields (Count, Mean, Std Dev, Min, Median 50%, Max, Skewness, Missing %).
+- **One-Click Data Cleaning**: Toggle automated deduplication and median/category missing value imputation with before/after delta reporting.
+- **Dynamic Range Filtering**: Dual-range filtering automatically bound to the dataset's detected time or primary numeric dimension.
+- **Minimalist Obsidian Dark Theme**: Designed with `#000000` midnight black, `#0B0B0B` obsidian cards, crisp `#1F1F1F` borders, and `#1DB954` Spotify green accents.
+
+---
+
+## Architecture & Heuristic Profiling
+
+```
+                     ┌──────────────────────────┐
+                     │     Uploaded Any CSV     │
+                     └─────────────┬────────────┘
+                                   │
+                                   ▼
+              ┌────────────────────────────────────────┐
+              │    Automated Heuristic Profiler        │
+              └───────┬────────────┬───────────┬───────┘
+                      │            │           │
+       ┌──────────────┴──────┐     │     ┌─────┴──────────────┐
+       │      time_col       │     │     │     metric_cols    │
+       │  Years (1900-2100)  │     │     │  Ranked by variance│
+       │  or Datetime/String │     │     │  and total volume  │
+       └─────────────────────┘     │     └────────────────────┘
+                                   │
+                    ┌──────────────┴──────────────┐
+                    │       category_cols         │
+                    │  Cardinality (2 to 500)     │
+                    │  Ranked for primary/second  │
+                    └─────────────────────────────┘
+                                   │
+                                   ▼
+         ┌──────────────────────────────────────────────────┐
+         │          Active Aggregation Pipeline             │
+         │  Range Filter  •  Deduplication  •  Imputation   │
+         └─────────────────────────┬────────────────────────┘
+                                   │
+           ┌───────────────────────┼───────────────────────┐
+           ▼                       ▼                       ▼
+    Executive Insights     Statistical Summary      Plotly.js Canvas
+    • Trend & Growth       • Count, Mean, Std       • Dynamic Area Trend
+    • Pareto Dominance     • Min, Median, Max       • Top 10 Categories
+    • Outlier Leverage     • Skewness & Missing %   • Composition Donut
+    • Bias Audit                                    • Outliers & Heatmap
+```
+
+### Column Classification Heuristics
+
+1. **`time_col`**: Detects ISO datetime strings, timestamp formats, column name tokens (`year`, `date`, `period`, `time`), and integer calendar years ($1900 \le \text{year} \le 2100$).
+2. **`id_cols`**: Discovers and filters out primary keys, serial indices, UUIDs, or HS codes (`id`, `code`, `index`, `key`, `uuid`, or uniqueness ratio $> 98\%$).
+3. **`metric_cols`**: Continuous numeric columns ranked by variance, non-zero entries, and domain keywords (`value`, `sales`, `revenue`, `price`, `amount`, `profit`) to elect the primary metric.
+4. **`category_cols`**: Categorical or string attributes with useful business cardinality ($2 \le \text{unique} \le 500$), ranking primary (e.g. `country`, `region`, `market`) and secondary groupings (e.g. `commodity`, `category`, `segment`).
+
+---
+
+## Visualization & Analytics Modules
+
+| Module | Description | Implementation |
+|---|---|---|
+| **KPI Monitors** | Summary cards showing Total Rows, Primary Metric Sum & Mean, Unique Categories, Data Completeness %, and Duplicate Count. | Live reactive cards with tabular typography |
+| **Executive Insights** | 4 structured analytical findings covering Trend Trajectory, Pareto Dominance, Outlier Leverage, and Data Integrity. | 2-column grid of minimal dark cards |
+| **Statistical Summary** | Descriptive parameters: Count, Mean, Std Dev, Min, Median, Max, Skewness, Missing % for all numeric columns. | Minimal dark table with monospace formatting |
+| **Time Trend** | Area and spline trajectory over time (or rolling index sequence if no time dimension exists). | Plotly.js line with Spotify green gradient fill |
+| **Top 10 Categories** | Horizontal bar chart of top category groups ranked by aggregate volume. Truncated to 28 characters with full names on hover. | Plotly.js horizontal bar with 220px left margin |
+| **Sector Composition** | Donut chart displaying the Top 5 groups + aggregated "Other" bucket. | Plotly.js doughnut with 58% cutout |
+| **Distribution & Outliers** | Dual-trace composite: frequency histogram + jittered boxplot with parametric skewness interpretation. | Plotly.js multi-row subplot + stat pills |
+| **Correlation Matrix** | Pairwise Pearson correlation heatmap across numeric metrics. Automatically hidden when $<2$ numeric dimensions exist. | Plotly.js dark-to-green continuous heatmap |
+| **Data Quality & Bias** | Missingness percentages per column + Pareto concentration alerts (flags when top 2 categories absorb $>25\%$ of volume). | Plotly.js bar chart + minimal alert cards |
+
+---
 
 ## Tech Stack
 
-| Layer    | Tools                                  |
-|----------|----------------------------------------|
-| Backend  | Python, FastAPI, Uvicorn, Pandas       |
-| Frontend | HTML, CSS, JavaScript, Chart.js (CDN)  |
+- **Backend**: Python 3.9+, FastAPI, Uvicorn, Pandas, NumPy
+- **Frontend**: Vanilla HTML5, Modern CSS Grid & Flexbox, Vanilla JavaScript (ES6+)
+- **Charting**: Plotly.js (via CDN)
+- **Typography**: Inter & JetBrains Mono (via Google Fonts)
+
+---
 
 ## Project Structure
 
 ```
-dashboard/
-├── main.py                       # FastAPI app and API endpoints
-├── requirements.txt              # Python dependencies
-├── Cleaned_India_Export.csv      # Your dataset (add this yourself)
+.
+├── Cleaned_India_Export.csv    # Bundled 184k-record demo dataset
+├── main.py                     # FastAPI application, profiling engine, endpoints
+├── requirements.txt            # Python backend dependencies
+├── README.md                   # Project documentation
 └── static/
-    ├── index.html
-    ├── style.css
-    ├── script.js
-    └── fonts/
-        ├── AgravePro-VariableFont_wght.ttf
-        └── AgravePro-Regular.ttf
+    ├── index.html              # Single-page application markup
+    ├── style.css               # Midnight dark design system (zero gimmicks)
+    └── script.js               # Reactive state controller & Plotly chart renderers
 ```
 
-## Dataset
+---
 
-Place a file named `Cleaned_India_Export.csv` in the project root (next to `main.py`) with these columns:
+## Quickstart
 
-| Column      | Description                                      |
-|-------------|--------------------------------------------------|
-| `year`      | Year of the record (e.g. `2020` or `2018-19`)    |
-| `value`     | Export value (numeric; commas are tolerated)     |
-| `country`   | Destination country                              |
-| `Commodity` | Exported commodity                               |
+### 1. Prerequisites
+Ensure you have **Python 3.9** or higher installed.
 
-Rows with missing values in any of these columns are dropped. Nothing is generated or estimated.
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.9 or newer
-
-### Installation and run
+### 2. Environment Setup
 
 ```bash
-# 1. Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+# Clone or navigate to the repository
+cd /path/to/project
 
-# 2. Install dependencies
+# Create a virtual environment
+python3 -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate       # On Linux/macOS
+# .\venv\Scripts\activate      # On Windows
+
+# Install dependencies
 pip install -r requirements.txt
+```
 
-# 3. Start the server
+### 3. Launch the Server
+
+```bash
 uvicorn main:app --reload
 ```
 
-Then open **http://127.0.0.1:8000** in your browser.
+The application will be live at:
+- **Web UI**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **Interactive Swagger Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-> Open the dashboard through the FastAPI server. Opening `index.html` directly or through another static server (such as VS Code Live Server) will not work, because the page calls the `/api/...` endpoints on the same origin.
+---
 
-Interactive API documentation is available at **http://127.0.0.1:8000/docs**.
+## API Reference
 
-## API Endpoints
-
-| Method | Endpoint                          | Description                                     |
-|--------|-----------------------------------|-------------------------------------------------|
-| GET    | `/api/years`                      | List of available years                         |
-| GET    | `/api/summary?year=`              | Total value, country count, commodity count     |
-| GET    | `/api/trend`                      | Total value per year                            |
-| GET    | `/api/top-countries?year=`        | Top 10 countries by total value                 |
-| GET    | `/api/top-commodities?year=`      | Top 5 commodities by total value                |
-
-The `year` parameter is optional on every endpoint that accepts it; omitting it aggregates across all years.
-
-Example response:
-
+### `POST /api/upload`
+Accepts a multipart CSV upload. Profiles schema and returns dataset metadata.
+- **Request**: `file: UploadFile` (form-data)
+- **Response**:
 ```json
 {
-  "labels": ["Country A", "Country B"],
-  "values": [1234.56, 987.65]
+  "filename": "dataset.csv",
+  "row_count": 184755,
+  "col_count": 5,
+  "missing_count": 0,
+  "duplicate_count": 0,
+  "detected_range": {
+    "col_name": "year",
+    "type": "time_numeric",
+    "min": 2010,
+    "max": 2021,
+    "step": 1
+  },
+  "available_modules": ["kpis", "insights", "stats_summary", "trend", "distribution", "data_quality", "top_categories", "composition"],
+  "profile": {
+    "time_col": "year",
+    "id_cols": ["HSCode"],
+    "primary_metric": "value",
+    "primary_category": "country",
+    "secondary_category": "Commodity"
+  }
 }
 ```
 
-## Customization
+### `POST /api/load-sample`
+Instantly loads the bundled 184,755-row India Exports dataset for zero-effort evaluation.
 
-- **Colors:** edit the CSS variables at the top of `static/style.css` and the `C` object at the top of `static/script.js`.
-- **Fonts:** swap the files in `static/fonts/` and update the `@font-face` rule in `style.css` and the font family in `script.js`.
-- **Top-N limits:** change `nlargest(10)` and `nlargest(5)` in `main.py`.
+### `POST /api/clean`
+Triggers one-click deduplication and missing value imputation (median for numeric, `"Unknown"` for categorical). Returns before/after deltas.
 
-## Troubleshooting
+### `POST /api/generate`
+Computes ready-to-render visualization payloads for active modules filtered by range.
+- **Request Body**:
+```json
+{
+  "modules": ["kpis", "insights", "stats_summary", "trend", "top_categories", "composition", "distribution", "correlation", "data_quality"],
+  "range_min": 2012,
+  "range_max": 2021,
+  "use_cleaned": false
+}
+```
 
-- **"Could not load data" or empty charts:** check the terminal for the `[startup]` lines showing how many rows loaded. If "usable rows" is 0 or far lower than "Loaded", check the `year` and `value` columns in your CSV.
-- **Verify the API directly:** open http://127.0.0.1:8000/api/years. You should see a JSON list of years.
-- **Data changes not showing:** the CSV is read once at startup. Restart the server after editing it.
-- **Font not applied:** confirm `static/fonts/AgravePro-VariableFont_wght.ttf` exists and loads (no 404) in your browser's Network tab.
+---
 
-## Notes
+## Design System
 
-- The units of `value` depend on your dataset, so the charts do not label units.
-- Agrave Pro is a third-party typeface. Check its license before redistributing the font files in a public repository.
+| Element | Specification |
+|---|---|
+| **Background** | `#000000` (Pure Midnight Black) |
+| **Card Surfaces** | `#0B0B0B` / `#121212` (Deep Obsidian) |
+| **Borders** | `1px solid #1F1F1F` |
+| **Primary Accent** | `#1DB954` (Spotify Green), hover: `#1ED760` |
+| **Typography** | `Inter` (sans-serif) for body and headings, `JetBrains Mono` for tabular metrics |
+
+---
+
+## License
+
+This project is licensed under the MIT License.
